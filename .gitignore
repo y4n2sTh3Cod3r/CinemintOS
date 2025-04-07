@@ -1,0 +1,3 @@
+/src/build
+src/kernel.o
+src/boot.bin
