@@ -26,10 +26,10 @@ enum vga_color
 #define ENTER 28
 #define KEY_LIMIT 58
 
-#define VGA_TEXT 0x03   // 80x25, 16
-#define VGA_GR01 0x04   // 320x200, 4
-#define VGA_GR02 0x12   // 640x480, 16
-#define VGA_GR03 0x13   // 320x200, 256
+#define VGA_TEXT 0x03 // 80x25, 16
+#define VGA_GR01 0x04 // 320x200, 4
+#define VGA_GR02 0x12 // 640x480, 16
+#define VGA_GR03 0x13 // 320x200, 256
 
 // Constants for VGA text mode
 const uint16_t VGA_WIDTH = 80;

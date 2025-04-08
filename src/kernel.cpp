@@ -5,16 +5,41 @@
 #include "screens.h"
 #include "io.h"
 
-extern "C" void kernel_main()
-{
-    cls();
-    print_string("Howdy! Welcome to Cinemint OS!\n", VGA_COLOR_LIGHT_CYAN);
+#define mode 0
 
-    while (true)
+extern "C" void kernel_main(multiboot_info *mbi)
+{
+    uint32_t total_ram_mb = get_total_ram_mb(mbi);
+
+    cls();
+
+    if (mode == 0)
     {
-        vector<char> i;
-        print_string("- ", VGA_COLOR_LIGHT_BLUE);
-        input(i);
-        print_char('\n');
+        print_string("Howdy! Welcome to Cinemint OS!\n", VGA_COLOR_LIGHT_CYAN);
+        print_string("Free Memory: ");
+        print_int(mbi->mem_lower);
+        print_string("\n");
+
+        while (true)
+        {
+            vector<char> i;
+            print_string("- ", VGA_COLOR_LIGHT_BLUE);
+            input(i);
+            print_char('\n');
+        }
+    }
+
+    else if (mode == 1)
+    {
+        set_vga_mode(VGA_GR01);
+        cls();
+
+        for (int x = 0; x < 320; x++)
+        {
+            for (int y = 0; y < 200; y++)
+            {
+                plot_pixel(x, y, x + y);
+            }
+        }
     }
 }
