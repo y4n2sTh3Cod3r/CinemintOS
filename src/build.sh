@@ -1,18 +1,7 @@
 #!/bin/bash
-# build_and_run.sh - Compile and run the simple OS kernel in QEMU
 
-# Exit on error
 set -e
-
-# Install required packages if not already installed
-echo "Checking for required packages..."
-packages=(g++ nasm qemu-system-x86 grub-pc-bin xorriso)
-for pkg in "${packages[@]}"; do
-    if ! dpkg -s "$pkg" &> /dev/null; then
-        echo "Installing $pkg..."
-        sudo apt-get install -y "$pkg"
-    fi
-done
+sudo apt-get install -y g++ nasm qemu-system-x86 grub-pc-bin xorriso
 
 # Create build directory
 mkdir -p build
@@ -43,16 +32,13 @@ cat > build/iso/boot/grub/grub.cfg << EOF
 set timeout=0
 set default=0
 
-menuentry "Simple Keyboard OS" {
+menuentry "Cinemint OS" {
     multiboot /boot/kernel.bin
     boot
 }
 EOF
 
-grub-mkrescue -o build/simple_os.iso build/iso
+grub-mkrescue -o build/cos.iso build/iso
 
 # Run the OS in QEMU
-echo "Running the OS in QEMU..."
-qemu-system-i386 -cdrom build/simple_os.iso
-
-echo "Done."
+qemu-system-i386 -cdrom build/cos.iso
