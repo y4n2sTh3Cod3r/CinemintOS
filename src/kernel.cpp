@@ -9,15 +9,13 @@
 
 extern "C" void kernel_main(multiboot_info *mbi)
 {
-    uint32_t total_ram_mb = get_total_ram_mb(mbi);
-
     cls();
 
     if (mode == 0)
     {
         print_string("Howdy! Welcome to Cinemint OS!\n", VGA_COLOR_LIGHT_CYAN);
         print_string("Free Memory: ");
-        print_int(mbi->mem_lower);
+        print_int(mbi->mem_lower + mbi->mem_upper);
         print_string("\n");
 
         while (true)

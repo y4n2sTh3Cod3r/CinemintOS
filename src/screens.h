@@ -48,39 +48,6 @@ void cls()
     }
 }
 
-void set_palette()
-{
-    // Set palette index to 0
-    outb(0x3C8, 0);
-
-    // Set up 16 basic colors (we care most about 15 being white)
-    for (int i = 0; i < 16; i++)
-    {
-        // For color 15, set to white (63,63,63)
-        if (i == 15)
-        {
-            outb(0x3C9, 63); // Red component
-            outb(0x3C9, 63); // Green component
-            outb(0x3C9, 63); // Blue component
-        }
-        else if (i == 1)
-        {
-            outb(0x3C9, 0);  // Red component
-            outb(0x3C9, 0);  // Green component
-            outb(0x3C9, 63); // Blue component (blue)
-        }
-        else
-        {
-            // Other colors just set to something reasonable
-            outb(0x3C9, (i & 4) ? 42 : 0); // Red component
-            outb(0x3C9, (i & 2) ? 42 : 0); // Green component
-            outb(0x3C9, (i & 1) ? 42 : 0); // Blue component
-        }
-    }
-}
-
-// Set VGA mode (0x13 = 320x200x256, 0x12 = 640x480x16)
-// Set VGA mode (0x13 = 320x200x256, 0x12 = 640x480x16, 0x04 = 320x200x4)
 void set_vga_mode(uint8_t mode)
 {
     vga_mode = mode;
