@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-sudo apt-get install -y g++ nasm qemu-system-x86 grub-pc-bin xorriso
+sudo apt-get install -y g++ nasm qemu-system-x86 grub-pc-bin xorriso mtools
 
 # Create build directory
 mkdir -p build
