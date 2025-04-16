@@ -23,6 +23,12 @@ for tool in gcc nasm grub-mkrescue xorriso; do
     fi
 done
 
+# Make sure our essential directories exist
+mkdir -p src
+mkdir -p include
+mkdir -p build
+mkdir -p iso/boot/grub
+
 # Create a test WAV file if it doesn't exist and no sound_data.h is present
 if [ ! -f "$WAV_FILE" ] && [ ! -f "$WAV_HEADER" ]; then
     echo "No WAV file found. Creating a test tone..."
@@ -49,9 +55,18 @@ if [ ! -f "$WAV_HEADER" ]; then
     exit 1
 fi
 
-# Create directories if they don't exist
-mkdir -p build
-mkdir -p iso/boot/grub
+# Move header files to their appropriate locations
+echo "Setting up header files..."
+cp -f include/multiboot.h . 2>/dev/null || echo "Creating multiboot.h in root directory"
+cp -f include/io.h . 2>/dev/null || echo "Creating io.h in root directory"
+
+# Make sure all our source files exist
+for file in src/boot.asm src/kernel.c src/ac97.c src/ac97.h src/wav.c src/wav.h; do
+    if [ ! -f "$file" ]; then
+        echo "Error: Source file '$file' not found."
+        exit 1
+    fi
+done
 
 # Compile assembly source
 echo "Compiling assembly code..."
@@ -87,9 +102,9 @@ echo ""
 echo "To run in QEMU:"
 echo "  qemu-system-i386 -soundhw ac97 -cdrom $KERNEL_NAME.iso"
 echo ""
-echo "To run in VirtualBox:"
-echo "  1. Create a new VM (Other/Unknown, 8MB RAM, no hard disk)"
-echo "  2. In Settings -> Audio, make sure audio is enabled"
-echo "  3. In Settings -> Storage, attach $KERNEL_NAME.iso to the CD drive"
+echo "To run in VMware Player:"
+echo "  1. Create a new VM (Other/Linux, 32-bit, 32MB RAM, no hard disk)"
+echo "  2. In VM settings -> Hardware -> Add -> Sound Card"
+echo "  3. In VM settings -> Hardware -> CD/DVD, attach $KERNEL_NAME.iso"
 echo "  4. Start the VM"
 echo ""

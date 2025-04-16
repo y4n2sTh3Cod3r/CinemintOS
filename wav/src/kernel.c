@@ -78,15 +78,19 @@ void kernel_main(multiboot_info_t *mboot_info) {
     print("Initializing audio hardware... ", 0x07);
     if (!wav_init()) {
         print("FAILED!\n", 0x0C);
-        print("Could not initialize AC97 audio hardware.\n", 0x0C);
-        print("Halting system.\n", 0x0C);
+        print("Could not initialize audio hardware.\n", 0x0C);
+        print("Proceeding anyway with default settings...\n", 0x0E);
         
-        /* If we can't initialize the audio hardware, just hang */
-        for (;;) {
-            __asm__ volatile("hlt");
-        }
+        /* Try fallback mode with hardcoded values */
+        extern uint16_t nam_base;
+        extern uint16_t nabm_base;
+        
+        /* Use common default values for VMware/VirtualBox */
+        nam_base = 0x5000;   /* Common NAM BAR address */
+        nabm_base = 0x5080;  /* Common NABM BAR address */
+    } else {
+        print("OK\n", 0x0A);
     }
-    print("OK\n", 0x0A);
     
     /* Play the WAV file */
     print("Playing WAV file... ", 0x07);

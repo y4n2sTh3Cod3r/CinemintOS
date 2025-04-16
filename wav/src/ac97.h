@@ -5,9 +5,17 @@
 #include "stdint.h"
 #include "stdbool.h"
 
-/* AC97 PCI device vendor/device ID */
+/* AC97 PCI device vendor/device ID - broader range to support more hardware */
 #define AC97_VENDOR_ID 0x8086      /* Intel */
 #define AC97_DEVICE_ID 0x2415      /* Generic Intel AC97 */
+
+/* VMware Sound device */
+#define VMWARE_VENDOR_ID 0x15AD
+#define VMWARE_DEVICE_ID 0x1977    /* One of VMware's sound device IDs */
+
+/* Ensoniq/Creative */
+#define ENSONIQ_VENDOR_ID 0x1274
+#define CREATIVE_VENDOR_ID 0x1102
 
 /* AC97 Bus Master registers (relative to NABM BAR) */
 #define AC97_PO_BDBAR     0x10    /* PCM Out buffer descriptor BAR */

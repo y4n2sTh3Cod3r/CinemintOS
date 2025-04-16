@@ -15,7 +15,12 @@ static bool str_equals(const uint8_t *str1, const uint8_t *str2, uint32_t len) {
 
 /* Initialize WAV playback */
 bool wav_init(void) {
-    return ac97_init();
+    /* Try to initialize hardware via AC97 driver */
+    bool result = ac97_init();
+    
+    /* Even if initialization fails, we'll try to proceed with playback
+       as the kernel.c will set up fallback values */
+    return result;
 }
 
 /* Play a WAV file from a buffer */
