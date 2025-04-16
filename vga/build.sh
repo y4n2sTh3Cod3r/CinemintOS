@@ -1,10 +1,13 @@
 #!/bin/bash
 
 set -e
-sudo apt-get install -y g++ nasm qemu-system-x86 grub-pc-bin xorriso
+sudo apt-get install -y g++ nasm qemu-system-x86 grub-pc-bin xorriso python3
 
 # Create build directory
 mkdir -p build
+
+python3 scripts/import_img.py
+python3 scripts/import_wav.py
 
 # Compile the assembly bootloader
 echo "Compiling boot.asm..."

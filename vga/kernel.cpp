@@ -1,45 +1,50 @@
 #include "include/cm.h"
-
+#include "build/sprite_item_don.h"
 #include "build/sprite_item_noki.h"
+#include "build/sprite_item_wood.h"
+#include "build/wav_riff.h"
 
-// Booyah
+using namespace cm;
+
 extern "C" void main(multiboot_info *mbi)
 {
-    cm::init(mbi);
-
-    cm::sprite_ptr noki = {&cm::sprite_item_noki, 64, 64};
+    init(mbi);
 
     int dir_x = 1;
     int dir_y = 1;
 
+    sprite_ptr *don = create_sprite(&sprite_don::item, 64, 64);
+    sprite_ptr *noki = create_sprite(&sprite_noki::item, 128, 64);
+    set_background(&sprite_wood::item, 0, 0);
+
+    play_wav_ac97(wav_riff::SAMPLES, wav_riff::SAMPLE_RATE, wav_riff::NUM_SAMPLES, 
+        wav_riff::BITS_PER_SAMPLE, wav_riff::NUM_CHANNELS);
+
     while (true)
     {
-        /*
-        for (int x = 0; x < 256; x++)
+        noki->x = don->y;
+
+        if (don->y > 480 - don->item->height)
         {
-            for (int y = 0; y < 256; y++)
-            {
-                cm::plot(x, y, (x / 16) % 16, 3, y / 64);
-            }
-        }
-        */
-
-        if (noki.x > 640 - noki.item->width) {
-            dir_x = -1;
-        } else if (noki.x < 0) {
-            dir_x = 1;
-        }
-
-        if (noki.y > 480 - noki.item->height) {
             dir_y = -1;
-        } else if (noki.y < 0) {
+        }
+        else if (don->y < 0)
+        {
             dir_y = 1;
         }
 
-        noki.x += dir_x;
-        noki.y += dir_y;
-        noki.draw();
+        don->y += dir_y;
 
-        //cm::update();
+        if (keydown(KEY_D))
+        {
+            don->x += 2;
+        }
+
+        if (keydown(KEY_A))
+        {
+            don->x += -2;
+        }
+
+        update();
     }
 }

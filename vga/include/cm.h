@@ -1,121 +1,13 @@
-#include <stdint.h>
+#include "consts.h"
 
 // Timer variables
 volatile uint64_t timer_ticks = 0;
 volatile bool frame_ready = false;
 
-// Try to detect a Multiboot structure (from GRUB)
-struct multiboot_info
-{
-    uint32_t flags;
-    uint32_t mem_lower;
-    uint32_t mem_upper;
-    uint32_t boot_device;
-    uint32_t cmdline;
-    uint32_t mods_count;
-    uint32_t mods_addr;
-    uint32_t syms[4];
-    uint32_t mmap_length;
-    uint32_t mmap_addr;
-    uint32_t drives_length;
-    uint32_t drives_addr;
-    uint32_t config_table;
-    uint32_t boot_loader_name;
-    uint32_t apm_table;
-    uint32_t vbe_control_info;
-    uint32_t vbe_mode_info;
-    uint16_t vbe_mode;
-    uint16_t vbe_interface_seg;
-    uint16_t vbe_interface_off;
-    uint16_t vbe_interface_len;
-    uint64_t framebuffer_addr;
-    uint32_t framebuffer_pitch;
-    uint32_t framebuffer_width;
-    uint32_t framebuffer_height;
-    uint8_t framebuffer_bpp;
-    uint8_t framebuffer_type;
-    uint8_t color_info[6];
-};
+volatile bool key_status[58] = {false};
+volatile bool key_hit[58] = {false};
 
 volatile multiboot_info *mbi = nullptr;
-
-// VGA and VBE constants
-#define VGA_AC_INDEX 0x3C0
-#define VGA_AC_WRITE 0x3C0
-#define VGA_AC_READ 0x3C1
-#define VGA_MISC_WRITE 0x3C2
-#define VGA_SEQ_INDEX 0x3C4
-#define VGA_SEQ_DATA 0x3C5
-#define VGA_DAC_READ_INDEX 0x3C7
-#define VGA_DAC_WRITE_INDEX 0x3C8
-#define VGA_DAC_DATA 0x3C9
-#define VGA_MISC_READ 0x3CC
-#define VGA_GC_INDEX 0x3CE
-#define VGA_GC_DATA 0x3CF
-#define VGA_CRTC_INDEX 0x3D4
-#define VGA_CRTC_DATA 0x3D5
-#define VGA_INSTAT_READ 0x3DA
-
-// VESA VBE specific registers and values
-#define VBE_DISPI_IOPORT_INDEX 0x01CE
-#define VBE_DISPI_IOPORT_DATA 0x01CF
-
-#define VBE_DISPI_INDEX_ID 0x0
-#define VBE_DISPI_INDEX_XRES 0x1
-#define VBE_DISPI_INDEX_YRES 0x2
-#define VBE_DISPI_INDEX_BPP 0x3
-#define VBE_DISPI_INDEX_ENABLE 0x4
-#define VBE_DISPI_INDEX_BANK 0x5
-#define VBE_DISPI_INDEX_VIRT_WIDTH 0x6
-#define VBE_DISPI_INDEX_VIRT_HEIGHT 0x7
-#define VBE_DISPI_INDEX_X_OFFSET 0x8
-#define VBE_DISPI_INDEX_Y_OFFSET 0x9
-
-#define VBE_DISPI_DISABLED 0x00
-#define VBE_DISPI_ENABLED 0x01
-#define VBE_DISPI_LFB_ENABLED 0x40
-
-// PIT (Programmable Interrupt Timer) constants
-#define PIT_CHANNEL0_DATA 0x40
-#define PIT_CHANNEL1_DATA 0x41
-#define PIT_CHANNEL2_DATA 0x42
-#define PIT_COMMAND 0x43
-
-// PIC (Programmable Interrupt Controller) constants
-#define PIC1_COMMAND 0x20
-#define PIC1_DATA 0x21
-#define PIC2_COMMAND 0xA0
-#define PIC2_DATA 0xA1
-#define PIC_EOI 0x20
-
-// VESA VBE specific registers and values
-#define VBE_DISPI_IOPORT_INDEX 0x01CE
-#define VBE_DISPI_IOPORT_DATA 0x01CF
-
-#define VBE_DISPI_INDEX_ID 0x0
-#define VBE_DISPI_INDEX_XRES 0x1
-#define VBE_DISPI_INDEX_YRES 0x2
-#define VBE_DISPI_INDEX_BPP 0x3
-#define VBE_DISPI_INDEX_ENABLE 0x4
-#define VBE_DISPI_INDEX_BANK 0x5
-#define VBE_DISPI_INDEX_VIRT_WIDTH 0x6
-#define VBE_DISPI_INDEX_VIRT_HEIGHT 0x7
-#define VBE_DISPI_INDEX_X_OFFSET 0x8
-#define VBE_DISPI_INDEX_Y_OFFSET 0x9
-
-#define VBE_DISPI_DISABLED 0x00
-#define VBE_DISPI_ENABLED 0x01
-#define VBE_DISPI_LFB_ENABLED 0x40
-
-// Default VESA LFB address (will be overridden if possible)
-#define DEFAULT_LFB_ADDRESS 0xFD000000
-
-// IRQ line definitions
-#define IRQ_TIMER 0
-#define IRQ_KEYBOARD 1
-
-// Frame rate target (in Hz)
-#define TARGET_FPS 60
 
 // Function to read a byte from an I/O port
 static inline uint8_t inb(uint16_t port)
@@ -164,6 +56,7 @@ volatile uint8_t *vga_memory_13h = (uint8_t *)0xA0000;
 
 // VESA LFB (Linear Frame Buffer) memory base
 volatile uint8_t *vesa_lfb = (uint8_t *)DEFAULT_LFB_ADDRESS;
+volatile uint8_t vesa_buffer[640 * 480 * 4];
 
 // Interrupt Descriptor Table structures
 struct idt_entry
@@ -221,22 +114,6 @@ void idt_install()
 
     // Load the IDT
     load_idt();
-}
-
-// C handler for timer interrupt
-extern "C" void isr_timer_handler()
-{
-    timer_ticks++;
-
-    // Set frame_ready flag at 60Hz (assuming PIT is configured for 1000Hz)
-    // Every ~16.67ms (1000/60) we should set frame_ready
-    if (timer_ticks % (1000 / TARGET_FPS) == 0)
-    {
-        frame_ready = true;
-    }
-
-    // Send End of Interrupt signal to PIC
-    outb(PIC1_COMMAND, PIC_EOI);
 }
 
 // Initialize the PIT for ~1000Hz timer
@@ -373,31 +250,57 @@ void setup_full_256_color_palette()
 
 void plot_rgb(int x, int y, uint8_t r, uint8_t g, uint8_t b)
 {
-    // Clamp RGB values to valid range
-    r = (r > 5) ? 5 : r;
-    g = (g > 5) ? 5 : g;
-    b = (b > 5) ? 5 : b;
-
-    // Calculate color index in our palette (based on 6×6×6 RGB cube)
-    uint8_t color = 36 * r + 6 * g + b;
-
-    // Special case for white - redirect to the brightest grayscale entry
-    if (r == 5 && g == 5 && b == 5)
+    if (x <= 640 && x >= 0 && y <= 480 && y >= 0)
     {
-        color = 255; // Last grayscale entry (pure white)
+        // Clamp RGB values to valid range
+        r = (r > 5) ? 5 : r;
+        g = (g > 5) ? 5 : g;
+        b = (b > 5) ? 5 : b;
+
+        // Calculate color index in our palette (based on 6×6×6 RGB cube)
+        uint8_t color = 36 * r + 6 * g + b;
+
+        // Special case for white - redirect to the brightest grayscale entry
+        if (r == 5 && g == 5 && b == 5)
+        {
+            color = 255; // Last grayscale entry (pure white)
+        }
+
+        // Set the pixel
+        vesa_buffer[y * 640 + x] = color;
+    }
+}
+
+void scankey()
+{
+    for (int t = 0; t < 58; t++)
+    {
+        key_hit[t] = false;
     }
 
-    // Set the pixel
-    vesa_lfb[y * 640 + x] = color;
+    if (inb(0x64) & 0x1)
+    {
+        uint8_t key = inb(0x60);
+
+        if (key < 58)
+        {
+            key_status[key] = true;
+            key_hit[key] = true;
+        }
+        else if (key > 128)
+        {
+            key_status[key - 128] = false;
+        }
+    }
 }
 
 namespace cm
 {
     struct pixel
     {
-        uint8_t hue;
-        uint8_t saturation;
-        uint8_t brightness;
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
     };
 
     struct sprite_item
@@ -407,32 +310,255 @@ namespace cm
         const pixel *data;
     };
 
-    class sprite_ptr
+    struct sprite_ptr
     {
-    public:
         const sprite_item *item;
-        float x;
-        float y;
+        int x, y, prev_x, prev_y;
+    };
 
-        sprite_ptr(const sprite_item *item_, int x_ = 0, int y_ = 0)
+    sprite_ptr sprites[256];
+    sprite_ptr background;
+    int sprite_count = 0;
+
+    sprite_ptr *create_sprite(const sprite_item *item_, int x = 0, int y = 0)
+    {
+        sprite_ptr *my_sprite;
+        my_sprite = &sprites[sprite_count];
+        my_sprite->item = item_;
+        my_sprite->x = x;
+        my_sprite->y = y;
+        my_sprite->prev_x = x;
+        my_sprite->prev_y = y;
+        sprite_count++;
+        return my_sprite;
+    }
+
+    void draw_sprite(const sprite_item *item, int x, int y)
+    {
+        for (int x_ = 0; x_ < item->width; x_++)
         {
-            item = item_;
-            x = x_;
-            y = y_;
+            for (int y_ = 0; y_ < item->height; y_++)
+            {
+                const pixel *p = &item->data[y_ * item->width + x_];
+                plot_rgb(x + x_, y + y_, p->r, p->g, p->b);
+            }
+        }
+    }
+
+    void set_background(const sprite_item *item_, int x = 0, int y = 0)
+    {
+        background.item = item_;
+        background.x = x;
+        background.y = y;
+        background.prev_x = x;
+        background.prev_y = y;
+        draw_sprite(item_, x, y);
+    }
+
+    void beep(int frequency, int duration)
+    {
+        // Set the speaker control register
+        int speaker_control_port = 0x43;
+        int speaker_data_port = 0x61;
+        int timer_0_channel = 0x0;
+
+        // Set the speaker's clock to the timer 0 clock
+        outb(speaker_control_port, 0x36);
+
+        // Set the frequency
+        outb(speaker_data_port, 0x13); // for 1193180 Hz
+        outb(speaker_control_port, timer_0_channel);
+
+        // Start the speaker
+        outb(speaker_data_port, (0x0 | (1 << 7))); // Enable the speaker
+        outb(speaker_data_port, 0x00);
+
+        // Stop the speaker
+        outb(speaker_data_port, 0x0);
+    }
+
+    bool keydown(uint8_t c)
+    {
+        return key_status[c];
+    }
+
+    bool keyhit(uint8_t c)
+    {
+        return key_hit[c];
+    }
+
+    class PWMSpeaker
+    {
+    private:
+        const uint8_t *samples;   // 8-bit samples
+        const int16_t *samples16; // 16-bit samples
+        uint32_t sampleRate;
+        uint32_t numSamples;
+        uint8_t bitsPerSample;
+        uint32_t currentSample;
+        bool playing;
+        uint32_t tickCounter;
+        uint32_t ticksPerSample;
+
+        // For PWM frequency generation
+        uint8_t prevValue;
+        uint8_t pwmCounter;
+        uint8_t pwmDutyCycle;
+
+        // Turn PC speaker on/off
+        void speakerOn()
+        {
+            // Set bits 0 and 1 of port 0x61 to enable the speaker
+            outb(0x61, inb(0x61) | 0x3);
         }
 
-        void draw()
+        void speakerOff()
         {
-            for (int x_ = 0; x_ < item->width; x_++)
+            // Clear bits 0 and 1 of port 0x61 to disable the speaker
+            outb(0x61, inb(0x61) & ~0x3);
+        }
+
+    public:
+        PWMSpeaker() : samples(nullptr), samples16(nullptr), sampleRate(0),
+                       numSamples(0), bitsPerSample(0), currentSample(0),
+                       playing(false), tickCounter(0), ticksPerSample(0),
+                       prevValue(0), pwmCounter(0), pwmDutyCycle(0) {}
+
+        // Initialize with 8-bit samples
+        void init(const uint8_t *wavSamples, uint32_t rate, uint32_t count)
+        {
+            samples = wavSamples;
+            samples16 = nullptr;
+            sampleRate = rate;
+            numSamples = count;
+            bitsPerSample = 8;
+            currentSample = 0;
+            playing = false;
+
+            // Calculate how many timer ticks per sample
+            // Assuming your timer frequency is 1000Hz
+            ticksPerSample = 1000 / sampleRate;
+            if (ticksPerSample == 0)
+                ticksPerSample = 1;
+
+            tickCounter = 0;
+            pwmCounter = 0;
+            pwmDutyCycle = 0;
+        }
+
+        // Initialize with 16-bit samples
+        void init(const int16_t *wavSamples, uint32_t rate, uint32_t count)
+        {
+            samples = nullptr;
+            samples16 = wavSamples;
+            sampleRate = rate;
+            numSamples = count;
+            bitsPerSample = 16;
+            currentSample = 0;
+            playing = false;
+
+            // Calculate how many timer ticks per sample
+            ticksPerSample = 1000 / sampleRate;
+            if (ticksPerSample == 0)
+                ticksPerSample = 1;
+
+            tickCounter = 0;
+            pwmCounter = 0;
+            pwmDutyCycle = 0;
+        }
+
+        void play()
+        {
+            currentSample = 0;
+            playing = true;
+            tickCounter = 0;
+        }
+
+        void stop()
+        {
+            playing = false;
+            speakerOff();
+        }
+
+        bool isPlaying() const
+        {
+            return playing;
+        }
+
+        // This should be called on every timer tick (1000Hz)
+        void update()
+        {
+            if (!playing)
+                return;
+
+            // Increment tick counter
+            tickCounter++;
+
+            // Check if it's time to process a new sample
+            if (tickCounter >= ticksPerSample)
             {
-                for (int y_ = 0; y_ < item->height; y_++)
+                tickCounter = 0;
+
+                // Get the current sample
+                if (currentSample >= numSamples)
                 {
-                    const pixel *p = &item->data[y_ * item->width + x_];
-                    plot_rgb(x + x_, y + y_, p->hue, p->saturation, p->brightness);
+                    // End of sound
+                    stop();
+                    return;
                 }
+
+                // Read sample value
+                uint8_t sampleValue;
+                if (bitsPerSample == 8)
+                {
+                    sampleValue = samples[currentSample];
+                }
+                else
+                {
+                    // Convert 16-bit to 8-bit
+                    int16_t sample16 = samples16[currentSample];
+                    // Map from -32768..32767 to 0..255
+                    sampleValue = (sample16 + 32768) >> 8;
+                }
+
+                // Set PWM duty cycle based on sample value
+                pwmDutyCycle = sampleValue;
+
+                // Move to next sample
+                currentSample++;
+            }
+
+            // Simple PWM implementation
+            // For each tick, we increment a counter and compare to duty cycle
+            pwmCounter = (pwmCounter + 1) % 256;
+
+            if (pwmCounter < pwmDutyCycle)
+            {
+                speakerOn();
+            }
+            else
+            {
+                speakerOff();
             }
         }
     };
+
+    // Global PWM speaker instance
+    PWMSpeaker pwmSpeaker;
+
+    // Helper function to play WAV with PWM speaker
+    void play_wav_pwm(const void *samples, uint32_t sampleRate, uint32_t numSamples, uint8_t bitsPerSample)
+    {
+        if (bitsPerSample == 8)
+        {
+            pwmSpeaker.init(static_cast<const uint8_t *>(samples), sampleRate, numSamples);
+        }
+        else if (bitsPerSample == 16)
+        {
+            pwmSpeaker.init(static_cast<const int16_t *>(samples), sampleRate, numSamples);
+        }
+        pwmSpeaker.play();
+    }
 
     void init(multiboot_info *mbi_)
     {
@@ -474,49 +600,108 @@ namespace cm
         setup_full_256_color_palette();
     }
 
+    int max(int a, int b)
+    {
+        return a > b ? a : b;
+    }
+
+    int min(int a, int b)
+    {
+        return a < b ? a : b;
+    }
+
     void cls()
     {
-        for (int x = 0; x < 640; x++)
+        for (int sprite_loc = 0; sprite_loc < sprite_count; sprite_loc++)
         {
-            for (int y = 0; y < 480; y++)
+            const sprite_item *item = sprites[sprite_loc].item;
+            int x = sprites[sprite_loc].x;
+            int y = sprites[sprite_loc].y;
+            int prev_x = sprites[sprite_loc].prev_x;
+            int prev_y = sprites[sprite_loc].prev_y;
+            int width = item->width;
+            int height = item->height;
+
+            // Only clear if the sprite has moved
+            if (x != prev_x || y != prev_y)
             {
-                plot_rgb(x, y, 0, 0, 0);
+                // Calculate overlapping region
+                int overlap_left = max(prev_x, x);
+                int overlap_top = max(prev_y, y);
+                int overlap_right = min(prev_x + width, x + width);
+                int overlap_bottom = min(prev_y + height, y + height);
+
+                // Clear previous position (excluding overlap)
+                for (int dx = 0; dx < width; dx++)
+                {
+                    for (int dy = 0; dy < height; dy++)
+                    {
+                        int px = prev_x + dx;
+                        int py = prev_y + dy;
+
+                        // Skip if in overlapping region
+                        if (px >= overlap_left && px < overlap_right &&
+                            py >= overlap_top && py < overlap_bottom)
+                        {
+                            continue;
+                        }
+
+                        pixel bg_pixel = background.item->data[(background.y + py) * background.item->width + background.x + px];
+                        plot_rgb(px, py, bg_pixel.r, bg_pixel.g, bg_pixel.b);
+                    }
+                }
             }
+
+            // Update previous position
+            sprites[sprite_loc].prev_x = x;
+            sprites[sprite_loc].prev_y = y;
         }
     }
 
     void update()
     {
-        // Wait for the frame_ready flag to be set by timer interrupt
-        while (!frame_ready)
+        for (int sprite_loc = 0; sprite_loc < sprite_count; sprite_loc++)
         {
-            // CPU can be halted to save power while waiting
-            asm volatile("hlt");
+            const sprite_item *item = sprites[sprite_loc].item;
+            int x = sprites[sprite_loc].x;
+            int y = sprites[sprite_loc].y;
+            draw_sprite(item, x, y);
         }
 
-        // Reset the frame_ready flag
+        for (int x = 0; x < 640; x++)
+        {
+            for (int y = 0; y < 480; y++)
+            {
+                vesa_lfb[y * 640 + x] = vesa_buffer[y * 640 + x];
+            }
+        }
+
+        // wait
+        while (!frame_ready)
+            asm volatile("hlt");
         frame_ready = false;
-    }
 
-    void beep(int frequency, int duration)
+        cls();
+        scankey();
+    }
+}
+
+#include "ac97_driver.h"
+
+// C handler for timer interrupt
+extern "C" void isr_timer_handler()
+{
+    timer_ticks++;
+
+    cm::pwmSpeaker.update();
+
+    // Set frame_ready flag at 60Hz (assuming PIT is configured for 1000Hz)
+    // Every ~16.67ms (1000/60) we should set frame_ready
+    if (timer_ticks % (1000 / TARGET_FPS) == 0)
     {
-        // Set the speaker control register
-        int speaker_control_port = 0x43;
-        int speaker_data_port = 0x61;
-        int timer_0_channel = 0x0;
-
-        // Set the speaker's clock to the timer 0 clock
-        outb(speaker_control_port, 0x36);
-
-        // Set the frequency
-        outb(speaker_data_port, 0x13); // for 1193180 Hz
-        outb(speaker_control_port, timer_0_channel);
-
-        // Start the speaker
-        outb(speaker_data_port, (0x0 | (1 << 7))); // Enable the speaker
-        outb(speaker_data_port, 0x00);
-
-        // Stop the speaker
-        outb(speaker_data_port, 0x0);
+        frame_ready = true;
     }
+
+    // Send End of Interrupt signal to PIC
+    outb(PIC1_COMMAND, PIC_EOI);
 }
